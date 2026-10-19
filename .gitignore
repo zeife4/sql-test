@@ -1,0 +1,13 @@
+node_modules
+.next
+out
+dist
+.env*
+!.env.example
+data/querydojo.db
+data/querydojo.db-shm
+data/querydojo.db-wal
+coverage
+*.log
+*.tsbuildinfo
+.DS_Store

@@ -1,0 +1,202 @@
+[
+  {
+    "id": "builtin-retail-low-stock",
+    "title": "补货清单",
+    "difficulty": "L1",
+    "knowledgePoints": ["basic_select", "sort_limit"],
+    "businessContext": "一家社区生鲜店每天开门前都要检查库存。采购同学希望先处理库存最紧张、同时仍在售的商品。",
+    "schema": {
+      "ddl": ["CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL, stock INTEGER NOT NULL, reorder_level INTEGER NOT NULL, price REAL NOT NULL, status TEXT NOT NULL, updated_at TEXT NOT NULL)"],
+      "seed": ["INSERT INTO products VALUES (1,'云南蓝莓','水果',8,15,29.9,'active','2025-03-01'),(2,'鲜牛奶','乳品',4,10,12.5,'active','2025-03-02'),(3,'全麦吐司','烘焙',20,12,15.0,'active','2025-03-01'),(4,'冻虾仁','冷冻',0,8,42.0,'active','2025-02-28'),(5,'旧版麦片','早餐',2,8,19.9,'inactive','2025-02-20'),(6,'有机鸡蛋','蛋品',10,18,22.8,'active','2025-03-03'),(7,'低糖酸奶','乳品',7,7,8.9,'active','2025-03-03'),(8,'香蕉','水果',12,20,6.8,'active','2025-03-02')"]
+    },
+    "question": "找出仍在售且当前库存低于补货线的商品，返回商品名、库存和补货线，按库存从少到多排列。",
+    "requirements": ["只统计 status 为 active 的商品", "stock 必须小于 reorder_level", "返回 name、stock、reorder_level 三列并按 stock 升序"],
+    "hints": ["筛选条件可以同时放在 WHERE 中", "排序使用 ORDER BY"],
+    "referenceSql": "SELECT name, stock, reorder_level FROM products WHERE status = 'active' AND stock < reorder_level ORDER BY stock ASC",
+    "explanation": "先筛选在售商品，再比较库存与补货线，最后按库存升序，让最缺货的商品排在前面。",
+    "traps": ["不要把等于补货线的商品算进去", "不要包含已经下架的商品"],
+    "ordered": true,
+    "industry": "零售",
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-community-hot-posts",
+    "title": "本周热帖",
+    "difficulty": "L1",
+    "knowledgePoints": ["basic_select", "sort_limit", "null_handling"],
+    "businessContext": "内容社区准备制作周报，需要挑出公开且互动活跃的帖子。运营只关注已正常发布的内容，草稿和删除内容都不应出现。",
+    "schema": {
+      "ddl": ["CREATE TABLE posts (id INTEGER PRIMARY KEY, title TEXT NOT NULL, author_id INTEGER NOT NULL, views INTEGER NOT NULL, likes INTEGER, visibility TEXT NOT NULL, status TEXT NOT NULL, published_at TEXT)"],
+      "seed": ["INSERT INTO posts VALUES (1,'第一次露营清单',11,920,88,'public','published','2025-03-01'),(2,'城市骑行路线',12,1500,120,'public','published','2025-03-03'),(3,'相机选购笔记',13,2400,NULL,'public','published','2025-03-02'),(4,'周末菜谱',11,760,65,'public','published','2025-03-04'),(5,'未完成的旅行计划',14,30,2,'private','draft',NULL),(6,'旧活动说明',15,3000,260,'public','deleted','2025-02-20'),(7,'租房避坑指南',16,2100,190,'public','published','2025-03-05'),(8,'通勤听单',17,1100,90,'public','published','2025-03-05')"]
+    },
+    "question": "选出公开且已发布、浏览量不少于 1000 的帖子，返回标题和浏览量，按浏览量从高到低取前 3 条。",
+    "requirements": ["visibility 为 public 且 status 为 published", "views 不少于 1000", "返回 title、views，按 views 降序并限制 3 行"],
+    "hints": ["不少于使用 >=", "先排序再 LIMIT"],
+    "referenceSql": "SELECT title, views FROM posts WHERE visibility = 'public' AND status = 'published' AND views >= 1000 ORDER BY views DESC LIMIT 3",
+    "explanation": "WHERE 完成状态和浏览量筛选，ORDER BY DESC 把最高浏览量放在前面，再用 LIMIT 取前三条。",
+    "traps": ["已删除的高浏览帖子不能计入", "LIMIT 应放在 ORDER BY 之后"],
+    "ordered": true,
+    "industry": "内容社区",
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-logistics-delays",
+    "title": "站点延误率",
+    "difficulty": "L2",
+    "knowledgePoints": ["aggregate", "group_having", "case_when"],
+    "businessContext": "物流区域经理要复盘各配送站点的服务质量。只有样本量足够的站点才进入本周整改清单。",
+    "schema": {
+      "ddl": ["CREATE TABLE deliveries (id INTEGER PRIMARY KEY, station TEXT NOT NULL, courier_id INTEGER NOT NULL, promised_at TEXT NOT NULL, delivered_at TEXT, status TEXT NOT NULL, distance_km REAL NOT NULL, fee REAL NOT NULL)"],
+      "seed": ["INSERT INTO deliveries VALUES (1,'北城站',1,'2025-03-01 12:00','2025-03-01 12:18','delivered',5.2,8),(2,'北城站',2,'2025-03-01 13:00','2025-03-01 12:55','delivered',3.1,6),(3,'北城站',1,'2025-03-02 12:00','2025-03-02 12:40','delivered',6.8,9),(4,'北城站',3,'2025-03-02 18:00','2025-03-02 18:03','delivered',2.5,5),(5,'南湖站',4,'2025-03-01 12:00','2025-03-01 12:30','delivered',4.2,7),(6,'南湖站',5,'2025-03-01 13:00','2025-03-01 12:58','delivered',3.6,6),(7,'南湖站',4,'2025-03-02 12:00',NULL,'cancelled',7.1,10),(8,'南湖站',6,'2025-03-02 19:00','2025-03-02 19:20','delivered',4.8,8),(9,'东港站',7,'2025-03-01 11:00','2025-03-01 11:02','delivered',2.1,5),(10,'东港站',7,'2025-03-02 11:00','2025-03-02 11:04','delivered',2.3,5)"]
+    },
+    "question": "按站点统计已送达订单数和延误订单数，延误定义为送达时间晚于承诺时间。只保留至少 3 个已送达订单的站点，按延误数从高到低排列。",
+    "requirements": ["只统计 status 为 delivered", "返回 station、delivery_count、late_count", "至少 3 单，按 late_count 降序、station 升序"],
+    "hints": ["条件计数可以使用 SUM(CASE WHEN ... THEN 1 ELSE 0 END)", "HAVING 用于筛选聚合后的分组"],
+    "referenceSql": "SELECT station, COUNT(*) AS delivery_count, SUM(CASE WHEN delivered_at > promised_at THEN 1 ELSE 0 END) AS late_count FROM deliveries WHERE status = 'delivered' GROUP BY station HAVING COUNT(*) >= 3 ORDER BY late_count DESC, station ASC",
+    "explanation": "先排除未送达订单，再按站点聚合。COUNT 统计样本数，CASE 条件求和统计延误，HAVING 过滤小样本站点。",
+    "traps": ["取消订单不能进入分母", "延误条件是严格晚于承诺时间"],
+    "ordered": true,
+    "industry": "物流",
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-education-pass-rate",
+    "title": "班级通过率",
+    "difficulty": "L2",
+    "knowledgePoints": ["aggregate", "group_having", "case_when"],
+    "businessContext": "在线教育教研组需要查看各班最近一次测验的整体表现。样本过少的试学班不参与排名。",
+    "schema": {
+      "ddl": ["CREATE TABLE exam_scores (id INTEGER PRIMARY KEY, class_name TEXT NOT NULL, student_id INTEGER NOT NULL, score REAL, submitted_at TEXT, attempt_no INTEGER NOT NULL, valid INTEGER NOT NULL, teacher_id INTEGER NOT NULL)"],
+      "seed": ["INSERT INTO exam_scores VALUES (1,'数据一班',101,86,'2025-03-01',1,1,9),(2,'数据一班',102,72,'2025-03-01',1,1,9),(3,'数据一班',103,58,'2025-03-01',1,1,9),(4,'数据一班',104,91,'2025-03-01',1,1,9),(5,'数据二班',201,66,'2025-03-01',1,1,10),(6,'数据二班',202,61,'2025-03-01',1,1,10),(7,'数据二班',203,59,'2025-03-01',1,1,10),(8,'数据二班',204,NULL,NULL,1,0,10),(9,'试学班',301,99,'2025-03-01',1,1,11),(10,'试学班',302,88,'2025-03-01',1,1,11)"]
+    },
+    "question": "统计每个班级有效成绩的学生数、平均分和通过率，60 分及以上算通过；只展示至少 3 名有效学生的班级，按通过率从高到低排列。",
+    "requirements": ["只统计 valid = 1 且 score 非空的记录", "通过率保留原始小数即可", "返回 class_name、student_count、avg_score、pass_rate"],
+    "hints": ["AVG 可以直接计算平均分", "条件满足时计 1.0，再除以总人数"],
+    "referenceSql": "SELECT class_name, COUNT(*) AS student_count, AVG(score) AS avg_score, SUM(CASE WHEN score >= 60 THEN 1.0 ELSE 0 END) / COUNT(*) AS pass_rate FROM exam_scores WHERE valid = 1 AND score IS NOT NULL GROUP BY class_name HAVING COUNT(*) >= 3 ORDER BY pass_rate DESC, class_name ASC",
+    "explanation": "先过滤无效与缺考记录，按班级聚合。用条件求和得到通过人数，乘 1.0 避免整数除法，再按通过率排序。",
+    "traps": ["NULL 成绩不能进入人数和平均分", "SQLite 整数相除会丢失小数"],
+    "ordered": true,
+    "industry": "在线教育",
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-saas-active-orgs",
+    "title": "高活跃客户",
+    "difficulty": "L3",
+    "knowledgePoints": ["join", "aggregate", "date_func"],
+    "businessContext": "SaaS 客户成功团队准备安排重点回访，希望识别付费状态正常且近期使用活跃的企业客户。",
+    "schema": {
+      "ddl": ["CREATE TABLE organizations (id INTEGER PRIMARY KEY, name TEXT NOT NULL, plan TEXT NOT NULL, status TEXT NOT NULL, seats INTEGER NOT NULL, city TEXT, created_at TEXT NOT NULL, owner_id INTEGER NOT NULL)", "CREATE TABLE usage_events (id INTEGER PRIMARY KEY, organization_id INTEGER NOT NULL, user_id INTEGER NOT NULL, event_name TEXT NOT NULL, occurred_at TEXT NOT NULL, duration_sec INTEGER, source TEXT NOT NULL, FOREIGN KEY (organization_id) REFERENCES organizations(id))"],
+      "seed": ["INSERT INTO organizations VALUES (1,'远山科技','pro','active',80,'上海','2024-01-01',11),(2,'方舟设计','team','active',25,'杭州','2024-05-10',12),(3,'星河咨询','pro','past_due',60,'北京','2023-11-20',13),(4,'晨光工作室','free','active',8,NULL,'2025-01-02',14)", "INSERT INTO usage_events VALUES (1,1,101,'report','2025-03-01',80,'web'),(2,1,102,'export','2025-03-02',30,'web'),(3,1,103,'report','2025-03-03',120,'api'),(4,1,101,'dashboard','2025-03-04',50,'web'),(5,2,201,'report','2025-03-01',60,'web'),(6,2,201,'dashboard','2025-03-02',40,'web'),(7,3,301,'report','2025-03-01',70,'api'),(8,3,302,'export','2025-03-02',20,'web'),(9,3,303,'report','2025-03-03',80,'web'),(10,4,401,'dashboard','2025-02-01',20,'web')"]
+    },
+    "question": "找出 active 状态且在 2025 年 3 月至少有 3 次使用事件的企业，返回企业名、套餐和事件数，按事件数从高到低排列。",
+    "requirements": ["企业 status 必须为 active", "事件时间范围为 2025-03-01（含）到 2025-04-01（不含）", "返回 name、plan、event_count"],
+    "hints": ["通过 organization_id 连接两张表", "日期文本采用半开区间比较"],
+    "referenceSql": "SELECT o.name, o.plan, COUNT(e.id) AS event_count FROM organizations o JOIN usage_events e ON e.organization_id = o.id WHERE o.status = 'active' AND e.occurred_at >= '2025-03-01' AND e.occurred_at < '2025-04-01' GROUP BY o.id, o.name, o.plan HAVING COUNT(e.id) >= 3 ORDER BY event_count DESC, o.name ASC",
+    "explanation": "先连接企业与使用事件，过滤企业状态和月份范围，再按企业聚合并用 HAVING 筛出高活跃客户。",
+    "traps": ["欠费企业即使活跃也不能计入", "日期上界使用下月 1 日更稳妥"],
+    "ordered": true,
+    "industry": "SaaS",
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-mobility-driver-income",
+    "title": "司机收入榜",
+    "difficulty": "L3",
+    "knowledgePoints": ["join", "aggregate", "subquery"],
+    "businessContext": "网约车城市运营正在评选服务稳定的司机。只有完成单量达到门槛且没有被停用的司机才能进入候选名单。",
+    "schema": {
+      "ddl": ["CREATE TABLE drivers (id INTEGER PRIMARY KEY, name TEXT NOT NULL, city TEXT NOT NULL, rating REAL NOT NULL, status TEXT NOT NULL, joined_at TEXT NOT NULL, vehicle_type TEXT NOT NULL, phone_tail TEXT NOT NULL)", "CREATE TABLE trips (id INTEGER PRIMARY KEY, driver_id INTEGER NOT NULL, rider_id INTEGER NOT NULL, fare REAL NOT NULL, platform_fee REAL NOT NULL, status TEXT NOT NULL, started_at TEXT NOT NULL, ended_at TEXT, FOREIGN KEY (driver_id) REFERENCES drivers(id))"],
+      "seed": ["INSERT INTO drivers VALUES (1,'陈师傅','成都',4.92,'active','2023-01-01','comfort','3321'),(2,'李师傅','成都',4.88,'active','2024-02-01','economy','7780'),(3,'王师傅','成都',4.96,'suspended','2022-09-01','comfort','1208'),(4,'赵师傅','重庆',4.90,'active','2024-04-01','economy','5620')", "INSERT INTO trips VALUES (1,1,101,56,8,'completed','2025-03-01','2025-03-01'),(2,1,102,44,6,'completed','2025-03-02','2025-03-02'),(3,1,103,70,10,'completed','2025-03-03','2025-03-03'),(4,2,104,32,5,'completed','2025-03-01','2025-03-01'),(5,2,105,39,5,'completed','2025-03-02','2025-03-02'),(6,2,106,60,9,'cancelled','2025-03-03',NULL),(7,3,107,80,12,'completed','2025-03-01','2025-03-01'),(8,3,108,90,13,'completed','2025-03-02','2025-03-02'),(9,3,109,65,9,'completed','2025-03-03','2025-03-03'),(10,4,110,50,7,'completed','2025-03-01','2025-03-01')"]
+    },
+    "question": "统计成都 active 司机已完成行程的净收入（车费减平台费），只保留至少完成 2 单的司机，返回司机名、完成单数和净收入，按净收入降序排列。",
+    "requirements": ["城市为成都且司机状态为 active", "只统计 completed 行程", "返回 name、trip_count、net_income"],
+    "hints": ["净收入是 SUM(fare - platform_fee)", "司机条件在连接后过滤"],
+    "referenceSql": "SELECT d.name, COUNT(t.id) AS trip_count, SUM(t.fare - t.platform_fee) AS net_income FROM drivers d JOIN trips t ON t.driver_id = d.id WHERE d.city = '成都' AND d.status = 'active' AND t.status = 'completed' GROUP BY d.id, d.name HAVING COUNT(t.id) >= 2 ORDER BY net_income DESC, d.name ASC",
+    "explanation": "连接司机和行程后同时过滤司机与行程状态，按司机聚合完成单量和净收入，再筛掉单量不足者。",
+    "traps": ["取消行程不能贡献收入", "净收入需扣除平台费"],
+    "ordered": true,
+    "industry": "出行",
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-finance-latest-balance",
+    "title": "账户最新余额",
+    "difficulty": "L4",
+    "knowledgePoints": ["window_fn", "cte", "topn_per_group"],
+    "businessContext": "数字银行风控团队要做日终核对，需要每个正常账户当天最后一笔流水后的余额。重复上报的时间点以流水编号较大者为准。",
+    "schema": {
+      "ddl": ["CREATE TABLE accounts (id INTEGER PRIMARY KEY, account_no TEXT NOT NULL, customer_name TEXT NOT NULL, status TEXT NOT NULL, currency TEXT NOT NULL, opened_at TEXT NOT NULL, branch TEXT NOT NULL, risk_level TEXT NOT NULL)", "CREATE TABLE account_snapshots (id INTEGER PRIMARY KEY, account_id INTEGER NOT NULL, balance REAL NOT NULL, available_balance REAL NOT NULL, recorded_at TEXT NOT NULL, source TEXT NOT NULL, batch_no TEXT NOT NULL, note TEXT, FOREIGN KEY (account_id) REFERENCES accounts(id))"],
+      "seed": ["INSERT INTO accounts VALUES (1,'A1001','林舟','active','CNY','2023-01-01','上海','low'),(2,'A1002','周宁','active','CNY','2022-05-01','杭州','medium'),(3,'A1003','韩一','frozen','CNY','2024-03-01','北京','high')", "INSERT INTO account_snapshots VALUES (1,1,1200,1100,'2025-03-01 09:00','core','B1',NULL),(2,1,1500,1380,'2025-03-01 16:00','core','B2',NULL),(3,1,1490,1370,'2025-03-01 16:00','repair','B2R','修正'),(4,2,5000,4800,'2025-03-01 10:00','core','B1',NULL),(5,2,4600,4300,'2025-03-01 18:00','core','B3',NULL),(6,3,800,0,'2025-03-01 17:00','core','B3','冻结')"]
+    },
+    "question": "取每个 active 账户在 2025-03-01 当天最后一条快照；时间相同则取 id 最大的记录。返回账号、客户名、余额和记录时间，按账号升序。",
+    "requirements": ["只处理 active 账户", "每个账户仅保留一行，时间相同按 id 降序决胜", "返回 account_no、customer_name、balance、recorded_at"],
+    "hints": ["可以先用 ROW_NUMBER 为每个账户编号", "分区键是 account_id"],
+    "referenceSql": "WITH ranked AS (SELECT s.*, ROW_NUMBER() OVER (PARTITION BY s.account_id ORDER BY s.recorded_at DESC, s.id DESC) AS rn FROM account_snapshots s WHERE s.recorded_at >= '2025-03-01' AND s.recorded_at < '2025-03-02') SELECT a.account_no, a.customer_name, r.balance, r.recorded_at FROM ranked r JOIN accounts a ON a.id = r.account_id WHERE r.rn = 1 AND a.status = 'active' ORDER BY a.account_no ASC",
+    "explanation": "CTE 中按账户分区、时间和 id 倒序编号，rn=1 就是确定性的最后一条；再连接账户并过滤正常状态。",
+    "traps": ["只用 MAX(recorded_at) 会在同一时间留下重复行", "冻结账户不应出现在结果中"],
+    "ordered": true,
+    "industry": "金融",
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-media-creator-running",
+    "title": "创作者累计收益",
+    "difficulty": "L4",
+    "knowledgePoints": ["window_fn", "cte", "date_func"],
+    "businessContext": "视频平台创作者中心要展示月度收益走势和累计收益，方便签约作者判断内容经营的变化。退款应抵扣当月收益。",
+    "schema": {
+      "ddl": ["CREATE TABLE creators (id INTEGER PRIMARY KEY, nickname TEXT NOT NULL, tier TEXT NOT NULL, status TEXT NOT NULL, category TEXT NOT NULL, followers INTEGER NOT NULL, joined_at TEXT NOT NULL, manager_id INTEGER)", "CREATE TABLE creator_earnings (id INTEGER PRIMARY KEY, creator_id INTEGER NOT NULL, amount REAL NOT NULL, earning_type TEXT NOT NULL, occurred_at TEXT NOT NULL, content_id INTEGER, settled INTEGER NOT NULL, note TEXT, FOREIGN KEY (creator_id) REFERENCES creators(id))"],
+      "seed": ["INSERT INTO creators VALUES (1,'山野镜头','signed','active','旅行',280000,'2023-01-01',9),(2,'一勺实验室','signed','active','美食',160000,'2023-05-01',10),(3,'旧日频道','signed','inactive','文化',90000,'2022-01-01',9)", "INSERT INTO creator_earnings VALUES (1,1,1200,'ad','2025-01-15',101,1,NULL),(2,1,1800,'ad','2025-02-15',102,1,NULL),(3,1,-200,'refund','2025-02-20',102,1,'退款'),(4,1,2100,'ad','2025-03-10',103,1,NULL),(5,2,900,'ad','2025-01-18',201,1,NULL),(6,2,1100,'ad','2025-02-18',202,1,NULL),(7,2,1500,'ad','2025-03-18',203,1,NULL),(8,3,2000,'ad','2025-02-01',301,1,NULL),(9,1,800,'ad','2025-03-25',104,0,'未结算')"]
+    },
+    "question": "统计 active 签约创作者 2025 年每月已结算净收益，并计算从年初到当月的累计收益。返回昵称、月份、月收益、累计收益，按昵称和月份升序。",
+    "requirements": ["只统计 status=active、tier=signed 且 settled=1", "月份格式为 YYYY-MM", "退款金额按原值参与求和"],
+    "hints": ["先按创作者和月份聚合，再在聚合结果上使用窗口函数", "strftime('%Y-%m', occurred_at) 可取月份"],
+    "referenceSql": "WITH monthly AS (SELECT c.id, c.nickname, strftime('%Y-%m', e.occurred_at) AS month, SUM(e.amount) AS monthly_income FROM creators c JOIN creator_earnings e ON e.creator_id = c.id WHERE c.status = 'active' AND c.tier = 'signed' AND e.settled = 1 AND e.occurred_at >= '2025-01-01' AND e.occurred_at < '2026-01-01' GROUP BY c.id, c.nickname, month) SELECT nickname, month, monthly_income, SUM(monthly_income) OVER (PARTITION BY id ORDER BY month ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_income FROM monthly ORDER BY nickname ASC, month ASC",
+    "explanation": "CTE 先把流水汇总到创作者月粒度，外层窗口函数再对月收益做累计，避免直接在明细上累计造成重复。",
+    "traps": ["未结算流水不能计入", "应先月汇总再做累计窗口"],
+    "ordered": true,
+    "industry": "内容平台",
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-growth-funnel",
+    "title": "新客支付漏斗",
+    "difficulty": "L5",
+    "knowledgePoints": ["funnel_retention", "cte", "join"],
+    "businessContext": "电商增长团队正在复盘新用户首周转化。事件会上报重复日志，因此同一用户同一步骤只能计算一次。",
+    "schema": {
+      "ddl": ["CREATE TABLE users (id INTEGER PRIMARY KEY, channel TEXT NOT NULL, registered_at TEXT NOT NULL, city TEXT, device TEXT NOT NULL, status TEXT NOT NULL, inviter_id INTEGER, experiment_group TEXT NOT NULL)", "CREATE TABLE user_events (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, event_name TEXT NOT NULL, event_time TEXT NOT NULL, session_id TEXT NOT NULL, page TEXT, order_id INTEGER, metadata TEXT, FOREIGN KEY (user_id) REFERENCES users(id))"],
+      "seed": ["INSERT INTO users VALUES (1,'organic','2025-03-01','上海','ios','active',NULL,'A'),(2,'ads','2025-03-01','杭州','android','active',NULL,'B'),(3,'organic','2025-03-02','北京','web','active',1,'A'),(4,'referral','2025-03-02',NULL,'ios','active',1,'B'),(5,'ads','2025-03-03','成都','android','blocked',NULL,'A')", "INSERT INTO user_events VALUES (1,1,'view_product','2025-03-01 10:00','s1','product',NULL,NULL),(2,1,'add_cart','2025-03-01 10:05','s1','cart',NULL,NULL),(3,1,'pay','2025-03-01 10:10','s1','checkout',101,NULL),(4,1,'pay','2025-03-01 10:10','s1','checkout',101,'duplicate'),(5,2,'view_product','2025-03-01 11:00','s2','product',NULL,NULL),(6,2,'add_cart','2025-03-02 12:00','s3','cart',NULL,NULL),(7,3,'view_product','2025-03-03 09:00','s4','product',NULL,NULL),(8,3,'pay','2025-03-04 09:00','s5','checkout',102,NULL),(9,4,'view_product','2025-03-02 13:00','s6','product',NULL,NULL),(10,4,'add_cart','2025-03-05 13:00','s7','cart',NULL,NULL),(11,4,'pay','2025-03-10 13:00','s8','checkout',103,NULL),(12,5,'view_product','2025-03-03 08:00','s9','product',NULL,NULL)"]
+    },
+    "question": "统计 2025-03-01 至 2025-03-07 注册的 active 用户首 7 天漏斗人数：浏览商品、浏览后加购、加购后支付。后一步必须发生在前一步之后；返回三个阶段名称和人数。",
+    "requirements": ["每个用户每阶段只计一次", "事件须发生在注册后 7 天内", "后续阶段必须满足时间顺序"],
+    "hints": ["可先按用户求每类事件的最早时间", "用 UNION ALL 输出三个阶段"],
+    "referenceSql": "WITH cohort AS (SELECT id, registered_at FROM users WHERE status = 'active' AND registered_at >= '2025-03-01' AND registered_at < '2025-03-08'), steps AS (SELECT c.id, MIN(CASE WHEN e.event_name='view_product' THEN e.event_time END) AS viewed_at, MIN(CASE WHEN e.event_name='add_cart' THEN e.event_time END) AS cart_at, MIN(CASE WHEN e.event_name='pay' THEN e.event_time END) AS paid_at FROM cohort c LEFT JOIN user_events e ON e.user_id=c.id AND e.event_time >= c.registered_at AND e.event_time < datetime(c.registered_at, '+7 days') GROUP BY c.id), valid AS (SELECT *, CASE WHEN viewed_at IS NOT NULL THEN 1 ELSE 0 END AS viewed, CASE WHEN cart_at > viewed_at THEN 1 ELSE 0 END AS carted, CASE WHEN paid_at > cart_at AND cart_at > viewed_at THEN 1 ELSE 0 END AS paid FROM steps) SELECT 'viewed' AS stage, SUM(viewed) AS users FROM valid UNION ALL SELECT 'carted', SUM(carted) FROM valid UNION ALL SELECT 'paid', SUM(paid) FROM valid",
+    "explanation": "先圈定注册 cohort，再按用户压成各阶段最早时间。通过时间比较保证顺序，最后把三个阶段用 UNION ALL 纵向输出。",
+    "traps": ["重复支付日志不能重复计数", "有支付但没有加购的用户不能进入支付阶段"],
+    "ordered": true,
+    "industry": "电商增长",
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-iot-streaks",
+    "title": "连续活跃设备",
+    "difficulty": "L5",
+    "knowledgePoints": ["gaps_islands", "window_fn", "cte"],
+    "businessContext": "物联网运维团队想发现连续稳定在线的门店设备，用于筛选固件灰度升级对象。同一天多次心跳只算一个活跃日。",
+    "schema": {
+      "ddl": ["CREATE TABLE devices (id INTEGER PRIMARY KEY, serial_no TEXT NOT NULL, store_name TEXT NOT NULL, model TEXT NOT NULL, status TEXT NOT NULL, installed_at TEXT NOT NULL, firmware TEXT NOT NULL, region TEXT NOT NULL)", "CREATE TABLE device_heartbeats (id INTEGER PRIMARY KEY, device_id INTEGER NOT NULL, heartbeat_at TEXT NOT NULL, signal INTEGER NOT NULL, battery INTEGER, firmware TEXT NOT NULL, ip TEXT, error_code TEXT, FOREIGN KEY (device_id) REFERENCES devices(id))"],
+      "seed": ["INSERT INTO devices VALUES (1,'SN-A01','静安一店','M2','online','2024-01-01','2.1','华东'),(2,'SN-A02','西湖店','M2','online','2024-02-01','2.0','华东'),(3,'SN-A03','朝阳店','M1','offline','2023-01-01','1.9','华北')", "INSERT INTO device_heartbeats VALUES (1,1,'2025-03-01 08:00',90,88,'2.1','10.0.0.1',NULL),(2,1,'2025-03-01 18:00',85,86,'2.1','10.0.0.1',NULL),(3,1,'2025-03-02 08:00',88,84,'2.1','10.0.0.1',NULL),(4,1,'2025-03-03 08:00',87,82,'2.1','10.0.0.1',NULL),(5,1,'2025-03-05 08:00',86,80,'2.1','10.0.0.1',NULL),(6,2,'2025-03-01 09:00',70,60,'2.0','10.0.0.2',NULL),(7,2,'2025-03-03 09:00',72,58,'2.0','10.0.0.2',NULL),(8,2,'2025-03-04 09:00',74,56,'2.0','10.0.0.2',NULL),(9,2,'2025-03-05 09:00',76,54,'2.0','10.0.0.2',NULL),(10,3,'2025-03-01 09:00',20,NULL,'1.9',NULL,'E01')"]
+    },
+    "question": "找出 online 设备在 2025 年 3 月的最长连续活跃天数，同一天多次心跳只算一天。返回设备序列号、门店名和最长连续天数，按天数降序排列。",
+    "requirements": ["只统计 status 为 online 的设备", "先按设备和日期去重", "返回 serial_no、store_name、longest_streak"],
+    "hints": ["连续日期减去 ROW_NUMBER 会得到同一组锚点", "分组求长度后再取每台设备最大值"],
+    "referenceSql": "WITH active_days AS (SELECT DISTINCT device_id, date(heartbeat_at) AS day FROM device_heartbeats WHERE heartbeat_at >= '2025-03-01' AND heartbeat_at < '2025-04-01'), numbered AS (SELECT device_id, day, ROW_NUMBER() OVER (PARTITION BY device_id ORDER BY day) AS rn FROM active_days), islands AS (SELECT device_id, day, date(day, '-' || rn || ' days') AS grp FROM numbered), streaks AS (SELECT device_id, grp, COUNT(*) AS streak FROM islands GROUP BY device_id, grp), longest AS (SELECT device_id, MAX(streak) AS longest_streak FROM streaks GROUP BY device_id) SELECT d.serial_no, d.store_name, l.longest_streak FROM longest l JOIN devices d ON d.id=l.device_id WHERE d.status='online' ORDER BY l.longest_streak DESC, d.serial_no ASC",
+    "explanation": "先把心跳去重成活跃日；日期减去递增行号后，连续日期会落到同一个锚点。按锚点统计区间长度，再取每台设备最大值。",
+    "traps": ["同一天多次心跳不能增加连续天数", "设备中断一天后应开始新的区间"],
+    "ordered": true,
+    "industry": "物联网",
+    "source": "builtin"
+  }
+]
